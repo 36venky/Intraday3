@@ -1,0 +1,17 @@
+import sys
+import os
+
+# ✅ Add parent folder *before* any imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import logging
+import Aanlyze_Sleep as AS
+
+logging.info("🚀 Analyzer [3] started...")
+
+tickers = ['ALPHA', 'ALPHAETF', 'ALPL30IETF', 'ATALREAL', 'ATL', 'AUTOIETF', 'BAJAJHIND', 'BALAJEE', 'BASML', 'BCLIND', 'BFSI', 'BLKASHYAP', 'BRNL', 'BSLNIFTY', 'CELLECOR', 'CENTRUM', 'CHEMICAL', 'CIFL', 'COFFEEDAY', 'CONFIPET', 'CORALFINAC', 'DEN', 'DEVX', 'DGCONTENT', 'DHANBANK', 'DIGISPICE', 'DWARKESH', 'ESAFSFB', 'EVIETF', 'EVINDIA', 'FCL', 'FINIETF', 'FISCHER', 'GENCON', 'GICL', 'GINNIFILA', 'GROWWEV', 'GROWWRAIL', 'HDFCMID150', 'HMAAGRO', 'HPAL', 'HTMEDIA', 'IMAGICAA', 'IRB', 'IRISDOREME', 'IT', 'ITETF', 'ITIETF', 'JINDWORLD', 'JISLJALEQS', 'KAMDHENU', 'KCK', 'LATTEYS', 'LICNETFGSC', 'LLOYDPP', 'LOWVOLIETF', 'LTGILTBEES', 'MAHKTECH', 'MANGALAM', 'MICEL', 'MIDCAPETF', 'MIDCAPIETF', 'MIDSMALL', 'MIRCELECTR', 'MIRZAINT', 'MNC', 'MOCAPITAL', 'MOM30IETF', 'MONIFTY500', 'MOREPENLAB', 'MOS', 'MOTOGENFIN', 'MSPL', 'MSUMI', 'MTNL', 'MUKKA', 'NETWORK18', 'NSLNISP', 'ORIENTCER', 'ORIENTPPR', 'OSWALGREEN', 'PARACABLES', 'PENINLAND', 'PFS', 'PHARMABEES', 'PSB', 'PVP', 'PVTBANIETF', 'PVTBANKADD', 'RENUKA', 'RETAIL', 'RTNINDIA', 'RUSHIL', 'SALSTEEL', 'SCILAL', 'SHEKHAWATI', 'SHIVAMAUTO', 'SHRADHA', 'SMALLCAP', 'SNOWMAN', 'SPENCERS', 'STLNETWORK', 'TAKE', 'TECH', 'TIRUPATIFL', 'TRACXN', 'TRIDENT', 'TUNWAL', 'VIPCLOTHNG', 'VIRINCHI', 'VLEGOV']#EX.Price.list(30, 40)
+tickers = [t + '.NS' for t in tickers]
+
+while True:
+    AS.analyze_real_time(tickers)
+    AS.wait_until_next_15_min()

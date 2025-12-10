@@ -1,0 +1,12 @@
+# Ignore virtual environment
+.env/
+
+# Ignore project-specific intraday folder
+.intraday/
+
+# Ignore all Python cache files
+__pycache__/
+*/__pycache__/
+
+# Ignore this specific file
+.structure.txt
