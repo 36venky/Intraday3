@@ -26,139 +26,195 @@ sell_triggered = {}
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
-    start_time = dtime(10, 10)
-    end_time   = dtime(14, 50)
+    start_time = dtime(9, 40)
+    end_time   = dtime(15, 15)
 
-    T = 0 # test flag to force run anytime
+    T = 1 #
 
-    if (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4) or T == 1:
+    if T == 0:
+        if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
+            return  # Market closed
+
+    try:
+        data = yf.download(
+            tickers=tickers,
+            interval='15m',
+            period='6d',
+            progress=False,
+            auto_adjust=True,
+            group_by='ticker'
+        )
+    except Exception as e:
+        logging.error(f"YF batch download failed: {e}")
+        return
+
+    for ticker in tickers:
+
+        # ---- GET DF SAFELY ----
         try:
-            data = yf.download(
-                tickers=tickers,
-                interval='15m',
-                period='5d',
-                progress=False,
-                auto_adjust=True,
-                group_by='ticker'
-            )
-        except Exception as e:
-            logging.error(f"Download error for batch: {e}")
-            return
+            df = data[ticker][['Open','High','Low','Close','Volume']].copy()
+            df = df.dropna(subset=['Open','High','Low','Close','Volume'])
+        except Exception:
+            L.invalid(f"{ticker},NO_DATA")
+            continue
 
-        for ticker in tickers:
-            try:
-                df = data[ticker][['Open', 'High', 'Low', 'Close','Volume']].copy()
-                #logging.info(f"[{ticker}] Data downloaded successfully with {len(df)} records.")
-            except KeyError:
-                logging.warning(f"[{ticker}] Data not found in batch download.")
-                continue
+        if df.empty or len(df) < 60:
+            L.invalid(f"{ticker},EMPTY_OR_SHORT")
+            continue
+        
+        # ---- TIMEZONE FIX ----
+        try:
+            df.index = df.index.tz_convert("Asia/Kolkata")
+        except:
+            df.index = df.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
 
-            if df.empty or len(df) < 55:
-                continue
+        df = df.between_time("09:15","15:30")
+        if len(df) < 20:
+            L.invalid(f"{ticker},INSUFFICIENT_AFTER_FILTER")
+            continue
 
-            if df.index.tz is None:
-                df.index = df.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
+        i = -1
+        price = df["Close"].iloc[i]
+
+        # ---- INDICATORS ----
+        df["EMA5"]  = EMA(df,5)
+        df["EMA9"]  = EMA(df,9)
+        df["EMA21"] = EMA(df,21)
+
+        rsi = RSI(df,14)
+        vwap = VWAP(df)
+        diff = df["EMA5"].iloc[i] - df["EMA5"].iloc[i-1]
+
+        # Vol, vol_val, vol_vma = Volume1(ticker)
+        # Frac = (vol_val / vol_vma) if vol_vma else 0
+
+        # -------- Volume ----------
+        vol_df = data[ticker][["Volume"]].dropna()
+
+        # Not enough data for rolling VMA
+        if vol_df.empty or len(vol_df) < 5:
+            L.invalid(f"{ticker},VOLUME_NOT_ENOUGH_DATA")
+            Vol = False
+            Frac = 0
+        else:
+            # Remove duplicated timestamps
+            vol_df = vol_df[~vol_df.index.duplicated(keep="last")]
+
+            # Rolling VMA
+            vol_df["VMA_5"] = vol_df["Volume"].rolling(5).mean()
+
+            latest_volume = vol_df["Volume"].iloc[-1]
+            latest_vma5 = vol_df["VMA_5"].iloc[-1]
+
+            # Convert numpy → python
+            if hasattr(latest_volume, "item"):
+                latest_volume = latest_volume.item()
+            if hasattr(latest_vma5, "item"):
+                latest_vma5 = latest_vma5.item()
+
+            # Fraction (only valid if VMA is non-zero)
+            if pd.isna(latest_vma5) or latest_vma5 == 0:
+                Vol = False
+                Frac = 0
             else:
-                df.index = df.index.tz_convert("Asia/Kolkata")
+                Frac = latest_volume / latest_vma5
+                Vol = latest_volume >= latest_vma5
 
-            df = df.between_time("09:15", "15:30")
 
-            i = -1  # Last row index
-            price = df["Close"].iloc[i] # Current price
+        X = Xval(price)
+        threshold = gat_angle(price) * X
 
-            # Calculate indicators
-            df["EMA5"] = EMA(df, 5)
-            df["EMA9"] = EMA(df, 9)
-            df["EMA21"] = EMA(df, 21)
+        # ---- ANGLE ----
+        if df["EMA5"].isna().sum() > 0:
+            L.invalid(f"{ticker},EMA_NAN")
+            continue
+        
+        last5_ema5 = df["EMA5"].tail(5).round(2).tolist()
+        ema_diff = df["EMA5"].iloc[i] - df["EMA5"].iloc[i-1]
+        angle = math.degrees(math.atan(ema_diff))
 
-            Vol , vol_val , vol_vma = Volume(data, ticker, length=5)
-            Frac = vol_val / vol_vma if vol_val != 0 else 0
-            Rsi = RSI(df, 14)
-            Vwap = VWAP(df)
-            diff = df['EMA5'].iloc[i] - df['EMA5'].iloc[i-1]
+        # --------------------------
+        #   BUY
+        # --------------------------
+        if ticker not in buy_triggered:
+            buy_triggered[ticker] = False
 
-            # X for specific price levels
-            X = int(1)
-            X = Xval(price)
+        strong_green = (
+            df["Close"].iloc[i] > df["Open"].iloc[i] and
+            abs(df["Close"].iloc[i] - df["Low"].iloc[i]) < 0.02 * price
+        )
 
-            # Angle calculations
-            try:
-                ema_diff = df['EMA5'].iloc[i] - df['EMA5'].iloc[i - 1]
-                angle = math.degrees(math.atan(ema_diff))
-            except IndexError:
-                logging.error(f"[{ticker}] Not enough candles for angle calculation.")
-                continue
-            
-            # --- BUY Logic ---
-            threshold = gat_angle(price) * X
-            strong_green = (
-                df['Close'].iloc[i] > df['Open'].iloc[i]
-                and abs(df['Close'].iloc[i] - df['Low'].iloc[i]) < 0.02 * df['Close'].iloc[i]  # body near low
-            )
+        BUY = (
+            not buy_triggered[ticker] and
+            strong_green and
+            angle >= threshold and
+            df["EMA9"].iloc[i] > df["EMA21"].iloc[i]
+        )
 
-            if ticker not in buy_triggered:
-                buy_triggered[ticker] = False
+        if BUY:
+            signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
 
-            BUY = strong_green and angle >= threshold and df['EMA9'].iloc[i] > df['EMA21'].iloc[i] and not buy_triggered[ticker]
+            intra = check_intraday_tradable_yf(ticker)
+            fluctuate, r2 = is_fluctuation(ticker)
 
-            if BUY:
-                signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
+            if intra and fluctuate:
+                write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{rsi.iloc[i]:.2f},{last5_ema5},{r2:.2f}\n")
+                L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{diff:.2f},{angle:.2f},{threshold:.2f}")
 
-                url = get_company_name(ticker)
-                intra = check_intraday_tradable_yf(ticker)
-                comfirmed = comfirm(ticker)
-                fluctuate , r2  = is_fluctuation(ticker)
+                buy_collection.insert_one({
+                    "Ticker": ticker,
+                    "Price": price,
+                    "Time": datetime.now()
+                })
 
-                if intra and fluctuate:
-                    write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{Rsi.iloc[i]:.2f},{r2:.2f}\n")
-                    L.buy(f"{ticker},{price:.2f},{signal_time},{diff:.2f},{angle:.2f},{threshold:.2f},{Vwap.iloc[i]:.2f},{Rsi.iloc[i]:.2f},{Frac:.2f},{r2:.2f},{url}")
-                
-                    buy_signal = {
-                        "Ticker": ticker,
-                        "Price": price,
-                        "Time": datetime.now(),
-                    }
-                    buy_collection.insert_one(buy_signal)
-                    buy_triggered[ticker] = True
-                else:
-                    L.isvalid(f"{ticker},{price:.2f},{signal_time},{diff:.2f},{angle:.2f},{threshold:.2f},{Vwap.iloc[i]:.2f},{Rsi.iloc[i]:.2f},{Frac:.2f},{r2:.2f},{url}")
+                buy_triggered[ticker] = True
             else:
-                L.invalid(f"{ticker},{price:.2f},{angle:.2f},{threshold:.2f}")
+                L.isvalid(f"{ticker},{r2:.2f}")
 
-            # --- SELL Logic ---
-            if ticker not in sell_triggered:
-                sell_triggered[ticker] = False
-            
-            strong_red_current = (
-                df['Close'].iloc[i] < df['Open'].iloc[i]
-                and abs(df['High'].iloc[i] - df['Close'].iloc[i]) < 0.02 * df['Close'].iloc[i] 
-            )
+        else:
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f},{threshold:.2f},{last5_ema5}")
 
-            SELL = strong_red_current and angle <= -threshold and df['EMA9'].iloc[i] < df['EMA21'].iloc[i] and not sell_triggered[ticker]
-            if SELL:
-                signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
+        # --------------------------
+        #   SELL
+        # --------------------------
+        if ticker not in sell_triggered:
+            sell_triggered[ticker] = False
 
-                url = get_company_name(ticker)
-                intra = check_intraday_tradable_yf(ticker)
-                comfirmed = comfirm(ticker)
-                fluctuate , r2  = is_fluctuation(ticker)
+        strong_red = (
+            df["Close"].iloc[i] < df["Open"].iloc[i] and
+            abs(df["High"].iloc[i] - df["Close"].iloc[i]) < 0.02 * price
+        )
 
-                if intra  and fluctuate:
-                    write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{Rsi.iloc[i]:.2f},{r2:.2f}\n")
-                    L.sell(f"{ticker},{price:.2f},{signal_time},{diff:.2f},{angle:.2f},{-threshold:.2f},{Vwap.iloc[i]:.2f},{Rsi.iloc[i]:.2f},{Frac:.2f},{r2:.2f},{url}")
-                    sell_signal = {
-                        "Ticker": ticker,
-                        "Price": price,
-                        "Time": datetime.now(),
-                    }
-                    sell_collection.insert_one(sell_signal)
-                    sell_triggered[ticker] = True
-                else:
-                    L.isvalid(f"{ticker},{price:.2f},{signal_time},{diff:.2f},{angle:.2f},{-threshold:.2f},{Vwap.iloc[i]:.2f},{Rsi.iloc[i]:.2f},{Frac:.2f},{r2:.2f},{url}")
+        SELL = (
+            not sell_triggered[ticker] and
+            strong_red and
+            angle <= -threshold and
+            df['EMA9'].iloc[i] < df['EMA21'].iloc[i]
+        )
+
+        if SELL:
+            signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
+
+            intra = check_intraday_tradable_yf(ticker)
+            fluctuate, r2 = is_fluctuation(ticker)
+
+            if intra and fluctuate:
+                write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{last5_ema5},{rsi.iloc[i]:.2f},{r2:.2f}\n")
+                L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{diff:.2f},{angle:.2f},{threshold:.2f}")
+
+                sell_collection.insert_one({
+                    "Ticker": ticker,
+                    "Price": price,
+                    "Time": datetime.now()
+                })
+
+                sell_triggered[ticker] = True
+
             else:
-                L.invalid(f"{ticker},{price:.2f},{angle:.2f},{-threshold:.2f}")
-    else:
-        logging.info("Market is closed. Analysis skipped.")
+                L.isvalid(f"{ticker},{r2:.2f}")
+
+        else:
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f},{-threshold:.2f},{last5_ema5}")
 
 
 def wait_until_next_15_min():

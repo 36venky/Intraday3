@@ -9,4 +9,4 @@ __pycache__/
 */__pycache__/
 
 # Ignore this specific file
-.structure.txt
+Intraday/structure.txt

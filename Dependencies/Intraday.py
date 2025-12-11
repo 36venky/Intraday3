@@ -5,7 +5,7 @@ import pandas as pd
 intra = {
             "ETERNAL.NS" : True,"MMP.NS" : False,'NARMADA.NS' : False,'CCCL.NS' : False,'TARACHAND.NS' : False,'NIRAJ.NS' : False,'TARC.NS' : False,"MVGJL.NS" : True,'NILASPACES.NS' : False,'SHALBY.NS' : False,'MUKKA.NS' : False,'MAANALU.NS' : False,'STALLION.NS' : False,'DGCONTENT.NS' : False,'WEL.NS' : False,'MANAKCOAT.NS' : False,'RELIABLE.NS' : False,'DRCSYSTEMS.NS' : False,'PRIMO.NS' : False,'MUNJALAU.NS' : False,'BPL.NS' : False,'DJML.NS' : False,'GPTHEALTH.NS' : False,'SURANAT&P.NS' : False,'AVONMORE.NS' : False,'DWARKESH.NS' : False,'KROSS.NS' : False,'DBOL.NS' : False,
             'GLOBAL.NS' : False,'ALEMBICLTD.NS' : False,'RPPINFRA.NS' : False,'SUMEETINDS.NS' : False,'APTECHT.NS' : False,'MWL.NS' : False,'TBZ.NS' : False,'JTEKTINDIA.NS' : False,'INDSWFTLAB.NS' : False,'MEDICO.NS' : False,'RAMANEWS.NS' : False,'ESSARSHPNG.NS' : False,'BGRENERGY.NS' : False,'NDLVENTURE.NS' : False,
-            'MUKANDLTD.NS' : False,'COASTCORP.NS' : False,'OMINFRAL.NS' : False,'SATIN.NS' : False,'UNIECOM.NS' : False,'RKEC.NS' : False,'MANOMAY.NS' : False,'VGL.NS' : False,'ALPA.NS' : False,'BRITANNIA.NS' : True,
+            'MUKANDLTD.NS' : False,'COASTCORP.NS' : False,'OMINFRAL.NS' : False,'SATIN.NS' : False,'UNIECOM.NS' : False,'RKEC.NS' : False,'MANOMAY.NS' : False,'VGL.NS' : False,'ALPA.NS' : False,'BRITANNIA.NS' : True,'KOTAKBANK.NS' : True,
         }
 
 def check_intraday_tradable_yf(symbol: str) -> bool:

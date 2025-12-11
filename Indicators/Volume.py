@@ -1,3 +1,4 @@
+import yfinance as yf
 import pandas as pd
 import logging
 
@@ -33,22 +34,16 @@ def Volume(data, ticker, length, default=False):
 
     return default, 0, 0
 
-# import yfinance as yf
+def Volume1(ticker):
 
-# tickers = ["KPEL.NS"]
+    data = yf.download(
+        tickers=ticker,
+        interval="15m",
+        period="5d",
+        group_by="ticker",
+        auto_adjust=True,
+        progress=False
+    )
 
-# data = yf.download(
-#     tickers=tickers,
-#     interval="15m",
-#     period="5d",
-#     group_by="ticker",
-#     auto_adjust=True,
-#     progress=False
-# )
-
-# for ticker in tickers:
-#     is_high, vol, vma = Volume(data, ticker, length=5)
-#     print(f"{ticker} Volume Check")
-#     print("High Volume?", is_high)
-#     print("Latest Volume:", vol)
-#    print("VMA:", vma)
+    is_high, vol, vma = Volume(data, ticker, length=5)
+    return is_high,vol,vma

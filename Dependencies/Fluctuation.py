@@ -51,7 +51,7 @@ def is_fluctuation(ticker):
             line = (f"{ticker} ✅ (R² = {r2:.2f})")
             #print(line)
             f.write(line + "\n")
-            P.save_line_chart(df,ticker, column="Close")
+            save_line_chart(df,ticker, column="Close")
             return True , r2
         else:
             line = (f"{ticker} ❌ (R² = {r2:.2f})")
