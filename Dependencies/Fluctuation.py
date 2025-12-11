@@ -4,7 +4,7 @@ import pandas as pd
 import math
 import logging
 import os
-import Plot as P
+from .Plot import *
 
 def is_volatile(df_slice, threshold=0.002):
         returns = df_slice['Close'].pct_change().dropna()

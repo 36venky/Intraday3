@@ -12,3 +12,4 @@ from .Url import *
 from .Xval import *
 from .Write import *    
 from .Loggings import *
+from .Plot import *
