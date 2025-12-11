@@ -26,10 +26,10 @@ sell_triggered = {}
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
-    start_time = dtime(9, 55)
+    start_time = dtime(10, 10)
     end_time   = dtime(14, 50)
 
-    T = 1 # test flag to force run anytime
+    T = 0 # test flag to force run anytime
 
     if (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4) or T == 1:
         try:
