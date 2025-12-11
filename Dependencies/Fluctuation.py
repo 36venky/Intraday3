@@ -4,6 +4,7 @@ import pandas as pd
 import math
 import logging
 import os
+import Plot as P
 
 def is_volatile(df_slice, threshold=0.002):
         returns = df_slice['Close'].pct_change().dropna()
@@ -50,6 +51,7 @@ def is_fluctuation(ticker):
             line = (f"{ticker} ✅ (R² = {r2:.2f})")
             #print(line)
             f.write(line + "\n")
+            P.save_line_chart(df,ticker, column="Close")
             return True , r2
         else:
             line = (f"{ticker} ❌ (R² = {r2:.2f})")
@@ -57,7 +59,7 @@ def is_fluctuation(ticker):
             f.write(line + "\n")
             return False , r2
         
-#print(is_fluctuation("PFOCUS.NS"))
+#print(is_fluctuation("ETERNAL.NS"))
 
 
 # import numpy as np
