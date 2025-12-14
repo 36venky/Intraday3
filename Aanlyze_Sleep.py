@@ -26,10 +26,10 @@ sell_triggered = {}
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
-    start_time = dtime(9, 40)
-    end_time   = dtime(15, 15)
+    start_time = dtime(11, 14)
+    end_time   = dtime(14, 10)
 
-    T = 1 #
+    T = 0 #
 
     if T == 0:
         if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
@@ -81,44 +81,43 @@ def analyze_real_time(tickers):
         df["EMA9"]  = EMA(df,9)
         df["EMA21"] = EMA(df,21)
 
-        rsi = RSI(df,14)
-        vwap = VWAP(df)
-        diff = df["EMA5"].iloc[i] - df["EMA5"].iloc[i-1]
+        # rsi = RSI(df,14)
+        # vwap = VWAP(df)
 
         # Vol, vol_val, vol_vma = Volume1(ticker)
         # Frac = (vol_val / vol_vma) if vol_vma else 0
 
-        # -------- Volume ----------
-        vol_df = data[ticker][["Volume"]].dropna()
+        # # -------- Volume ----------
+        # vol_df = data[ticker][["Volume"]].dropna()
 
-        # Not enough data for rolling VMA
-        if vol_df.empty or len(vol_df) < 5:
-            L.invalid(f"{ticker},VOLUME_NOT_ENOUGH_DATA")
-            Vol = False
-            Frac = 0
-        else:
-            # Remove duplicated timestamps
-            vol_df = vol_df[~vol_df.index.duplicated(keep="last")]
+        # # Not enough data for rolling VMA
+        # if vol_df.empty or len(vol_df) < 5:
+        #     L.invalid(f"{ticker},VOLUME_NOT_ENOUGH_DATA")
+        #     Vol = False
+        #     Frac = 0
+        # else:
+        #     # Remove duplicated timestamps
+        #     vol_df = vol_df[~vol_df.index.duplicated(keep="last")]
 
-            # Rolling VMA
-            vol_df["VMA_5"] = vol_df["Volume"].rolling(5).mean()
+        #     # Rolling VMA
+        #     vol_df["VMA_5"] = vol_df["Volume"].rolling(5).mean()
 
-            latest_volume = vol_df["Volume"].iloc[-1]
-            latest_vma5 = vol_df["VMA_5"].iloc[-1]
+        #     latest_volume = vol_df["Volume"].iloc[-1]
+        #     latest_vma5 = vol_df["VMA_5"].iloc[-1]
 
-            # Convert numpy → python
-            if hasattr(latest_volume, "item"):
-                latest_volume = latest_volume.item()
-            if hasattr(latest_vma5, "item"):
-                latest_vma5 = latest_vma5.item()
+        #     # Convert numpy → python
+        #     if hasattr(latest_volume, "item"):
+        #         latest_volume = latest_volume.item()
+        #     if hasattr(latest_vma5, "item"):
+        #         latest_vma5 = latest_vma5.item()
 
-            # Fraction (only valid if VMA is non-zero)
-            if pd.isna(latest_vma5) or latest_vma5 == 0:
-                Vol = False
-                Frac = 0
-            else:
-                Frac = latest_volume / latest_vma5
-                Vol = latest_volume >= latest_vma5
+        #     # Fraction (only valid if VMA is non-zero)
+        #     if pd.isna(latest_vma5) or latest_vma5 == 0:
+        #         Vol = False
+        #         Frac = 0
+        #     else:
+        #         Frac = latest_volume / latest_vma5
+        #         Vol = latest_volume >= latest_vma5
 
 
         X = Xval(price)
@@ -158,8 +157,10 @@ def analyze_real_time(tickers):
             fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{rsi.iloc[i]:.2f},{last5_ema5},{r2:.2f}\n")
-                L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{diff:.2f},{angle:.2f},{threshold:.2f}")
+                write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{r2:.2f}\n")
+                L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f}")
+
+                save_line_chart(df, ticker=ticker, column="Close")
 
                 buy_collection.insert_one({
                     "Ticker": ticker,
@@ -199,8 +200,10 @@ def analyze_real_time(tickers):
             fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{Vol},{Frac:.2f},{last5_ema5},{rsi.iloc[i]:.2f},{r2:.2f}\n")
-                L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{diff:.2f},{angle:.2f},{threshold:.2f}")
+                write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{r2:.2f}\n")
+                L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f}")
+                
+                save_line_chart(df, ticker=ticker, column="Close")
 
                 sell_collection.insert_one({
                     "Ticker": ticker,
@@ -212,7 +215,6 @@ def analyze_real_time(tickers):
 
             else:
                 L.isvalid(f"{ticker},{r2:.2f}")
-
         else:
             L.invalid(f"{ticker},{price:.2f},{angle:.2f},{-threshold:.2f},{last5_ema5}")
 
@@ -223,4 +225,4 @@ def wait_until_next_15_min():
     next_time -= timedelta(minutes=next_time.minute % 15)
     wait_seconds = (next_time - now).total_seconds()
     logging.info(f"Waiting {int(wait_seconds)}s until next 15-min {next_time.strftime('%H:%M:%S')}")
-    tm.sleep(wait_seconds)          
+    tm.sleep(wait_seconds)        

@@ -3,17 +3,11 @@ import yfinance as yf
 import pandas as pd
 import math
 import logging
-import os
-from .Plot import *
-
-def is_volatile(df_slice, threshold=0.002):
-        returns = df_slice['Close'].pct_change().dropna()
-        volatility = returns.std()
-        return volatility > threshold, volatility
+from sklearn.linear_model import LinearRegression
+from datetime import datetime
 
 def is_fluctuation(ticker):
     try:
-        # ✅ Download all tickers at once (much faster)
         data = yf.download(
             tickers=ticker,
             interval='1m',
@@ -23,134 +17,74 @@ def is_fluctuation(ticker):
             group_by='ticker'
         )
     except Exception as e:
-        logging.error(f"Download error for batch: {e}")
+        logging.error(f"Download error for {ticker}: {e}")
+        return False , 0
 
     try:
         df = data[ticker][['Open', 'High', 'Low', 'Close']].copy()
     except KeyError:
-        logging.warning(f"[{ticker}] Data not found in batch download.")
-    
+        logging.warning(f"[{ticker}] Data not found.")
+        return False , 0
+
+    # Convert to IST and filter market hours
     df.index = df.index.tz_convert('Asia/Kolkata')
     df = df.between_time("09:15", "15:30")
-    
-    if df.empty or len(df) < 5:
-        logging.warning(f"[{ticker}] Not enough data for fluctuation check ({len(df)} rows)")
-        return False
-    
-    from sklearn.linear_model import LinearRegression
-    import numpy as np
 
-    y = df['Close'].values.reshape(-1, 1)
+    if df.empty or len(df) < 20:
+        logging.warning(f"[{ticker}] Not enough data ({len(df)} rows)")
+        return False,0
+
+    # Take last 60 candles
+    end_index = len(df)
+    df_slice = df.iloc[0:end_index]
+
+    # --- Volatility Calculation ---
+    returns = df_slice['Close'].pct_change().dropna()
+    volatility = returns.std()
+
+    # --- Linear regression ---
+    y = df_slice['Close'].values.reshape(-1, 1)
     x = np.arange(len(y)).reshape(-1, 1)
-
     model = LinearRegression().fit(x, y)
+
     r2 = model.score(x, y)
+    slope = model.coef_[0][0]
 
-    with open("Fluctuation.txt", "a", encoding="utf-8") as f:
-        if r2 > 0.80:
-            line = (f"{ticker} ✅ (R² = {r2:.2f})")
-            #print(line)
+    # Convert slope to angle
+    angle = math.degrees(math.atan(slope))
+
+    # --- Sideways detection ---
+    price_range = df_slice['High'].max() - df_slice['Low'].min()
+    avg_price = df_slice['Close'].mean()
+    range_percent = (price_range / avg_price) * 100
+
+    # --- Time based volatility threshold ---
+    now = datetime.now().strftime("%H:%M")
+
+    if now < "10:00":
+        vol_threshold = 0.006
+    else:
+        vol_threshold = 0.0015
+
+    # --- Final logic ---
+    if volatility < vol_threshold and r2 >= 0.88 and 5 > range_percent > 0.25:
+
+        line = (f"{ticker}✅,{volatility:.4f},{r2:.2f},{range_percent:.2f}")
+
+        with open("Fluctuation.txt", "a", encoding="utf-8") as f:
             f.write(line + "\n")
-            save_line_chart(df,ticker, column="Close")
-            return True , r2
-        else:
-            line = (f"{ticker} ❌ (R² = {r2:.2f})")
-            #print(line)
+
+        return True , r2
+
+    else:
+        line = (f"{ticker} ❌,{volatility:.4f},{r2:.2f},{range_percent:.2f}")
+
+        with open("Fluctuation.txt", "a", encoding="utf-8") as f:
             f.write(line + "\n")
-            return False , r2
-        
-#print(is_fluctuation("ETERNAL.NS"))
+
+        return False , r2
 
 
-# import numpy as np
-# import yfinance as yf
-# import pandas as pd
-# import math
-# import logging
-# from sklearn.linear_model import LinearRegression
-# from datetime import datetime
-
-# def is_fluctuation(ticker):
-#     try:
-#         data = yf.download(
-#             tickers=ticker,
-#             interval='1m',
-#             period='1d',
-#             progress=False,
-#             auto_adjust=True,
-#             group_by='ticker'
-#         )
-#     except Exception as e:
-#         logging.error(f"Download error for {ticker}: {e}")
-#         return False
-
-#     try:
-#         df = data[ticker][['Open', 'High', 'Low', 'Close']].copy()
-#     except KeyError:
-#         logging.warning(f"[{ticker}] Data not found.")
-#         return False
-
-#     # Convert to IST and filter market hours
-#     df.index = df.index.tz_convert('Asia/Kolkata')
-#     df = df.between_time("09:15", "15:30")
-
-#     if df.empty or len(df) < 20:
-#         logging.warning(f"[{ticker}] Not enough data ({len(df)} rows)")
-#         return False
-
-#     # Take last 60 candles
-#     end_index = len(df)
-#     start_index = max(0, end_index - 60)
-#     df_slice = df.iloc[start_index:end_index]
-
-#     # --- Volatility Calculation ---
-#     returns = df_slice['Close'].pct_change().dropna()
-#     volatility = returns.std()
-
-#     # --- Linear regression ---
-#     y = df_slice['Close'].values.reshape(-1, 1)
-#     x = np.arange(len(y)).reshape(-1, 1)
-#     model = LinearRegression().fit(x, y)
-
-#     r2 = model.score(x, y)
-#     slope = model.coef_[0][0]
-
-#     # Convert slope to angle
-#     angle = math.degrees(math.atan(slope))
-
-#     # --- Sideways detection ---
-#     price_range = df_slice['High'].max() - df_slice['Low'].min()
-#     avg_price = df_slice['Close'].mean()
-#     range_percent = (price_range / avg_price) * 100
-
-#     # --- Time based volatility threshold ---
-#     now = datetime.now().strftime("%H:%M")
-
-#     if now < "10:00":
-#         vol_threshold = 0.006
-#     else:
-#         vol_threshold = 0.004
-
-#     # --- Final logic ---
-#     if volatility < vol_threshold and r2 > 0.50 and range_percent > 0.15:
-
-#         line = (f"{ticker} ✅ Stable | Vol={volatility:.4f} | R²={r2:.2f} "
-#                 f"| Angle={angle:.2f}° | Range={range_percent:.2f}%")
-
-#         print(line)
-
-#         with open("Fluctuation.txt", "a", encoding="utf-8") as f:
-#             f.write(line + "\n")
-
-#         return True
-
-#     else:
-#         line = (f"{ticker} ❌ Volatile/Sideways | Vol={volatility:.4f} | R²={r2:.2f} "
-#                 f"| Angle={angle:.2f}° | Range={range_percent:.2f}%")
-
-#         print(line)
-
-#         with open("Fluctuation.txt", "a", encoding="utf-8") as f:
-#             f.write(line + "\n")
-
-#         return False
+# tickers = ['CHAMBLFERT.NS', 'ABFRL.NS', 'IRISDOREME.NS', 'CAMLINFINE.NS', 'AMBUJACEM.NS', 'ASIANTILES.NS', 'ANANTRAJ.NS', 'DEEPINDS.NS', 'GPIL.NS', 'CCL.NS', 'GIPCL.NS', 'DALBHARAT.NS', 'HERITGFOOD.NS', 'IMFA.NS', 'INDUSINDBK.NS', 'SBC.NS', 'JSWSTEEL.NS', 'INDRAMEDCO.NS', 'GODREJPROP.NS', 'NYKAA.NS', 'JUBLINGREA.NS', 'PATELRMART.NS', 'MINDACORP.NS', 'KOTAKBANK.NS', 'M&MFIN.NS', 'MOTILALOFS.NS', 'NAM-INDIA.NS', 'RAYMOND.NS', 'OBEROIRLTY.NS', 'TDPOWERSYS.NS', 'TIPSMUSIC.NS', 'TORNTPOWER.NS', 'PRESTIGE.NS', 'SWSOLAR.NS', 'SUPREMEIND.NS', 'THELEELA.NS', 'TVSMOTOR.NS', 'V2RETAIL.NS', 'AEGISVOPAK.NS', 'APOLLO.NS', 'ABSLAMC.NS', 'ASHOKLEY.NS', 'CUB.NS', 'CREDITACC.NS', 'DMART.NS', 'ECLERX.NS', 'EXICOM.NS', 'IEX.NS', 'JSWINFRA.NS', 'ORIENTHOT.NS', 'PARKHOTELS.NS', 'SWIGGY.NS', 'WELENT.NS', 'TITAN.NS', 'AEGISLOG.NS', 'BHEL.NS', 'FUSION.NS', 'EFCIL.NS', 'NRBBEARING.NS', 'SHREEJISPG.NS', 'MANYAVAR.NS', 'COROMANDEL.NS', 'ROLEXRINGS.NS', 'INDOTHAI.NS', 'SADHNANIQ.NS', 'GESHIP.NS', 'SANDUMA.NS', 'M&M.NS', 'VINCOFE.NS', 'GMRAIRPORT.NS', 'CELLO.NS', 'HINDZINC.NS', 'LOKESHMACH.NS', 'ETERNAL.NS', 'NATIONALUM.NS', 'SARDAEN.NS', 'SMCGLOBAL.NS', 'GRAVITA.NS', 'VEDL.NS', 'EPL.NS']
+# for ticker in tickers:
+#     is_fluctuation(ticker)
