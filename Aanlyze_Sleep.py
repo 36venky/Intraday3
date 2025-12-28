@@ -8,6 +8,7 @@ from Dependencies import *
 from Indicators import *
 from Dependencies.Loggings import logger as L
 from pymongo import MongoClient
+from collections import defaultdict
 from dotenv import load_dotenv
 
 load_dotenv() # Load environment variables from .env file
@@ -18,16 +19,36 @@ client = MongoClient(MONGO_URI)
 db = client["Trail1"]
 buy_collection = db["buy_signals"]
 sell_collection = db["sell_signals"]
+Regression = db["Regression"]
 
 # --- Global Buy State ---
 buy_triggered = {}
 sell_triggered = {}
 #M.start_whatsapp_worker()
+h = defaultdict(list)
+
+def add_value(key, value):
+    h[key].append(value)
+
+    if len(h[key]) < 3:
+        return False,0.0,0.0
+
+    last3 = h[key][-3:]
+    diffs = [
+        last3[1] - last3[0],
+        last3[2] - last3[1]
+    ]
+
+    mean_diff = round(sum(diffs) / len(diffs), 2)
+    latest = last3[-1]
+    if mean_diff >= 0.15 and latest >= 0.70:
+        return True,mean_diff, latest
+    return False,mean_diff, latest
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
-    start_time = dtime(11, 14)
-    end_time   = dtime(14, 10)
+    start_time = dtime(10, 13)
+    end_time   = dtime(14, 35)
 
     T = 0 #
 
@@ -52,14 +73,14 @@ def analyze_real_time(tickers):
 
         # ---- GET DF SAFELY ----
         try:
-            df = data[ticker][['Open','High','Low','Close','Volume']].copy()
-            df = df.dropna(subset=['Open','High','Low','Close','Volume'])
+            df = data[ticker][['Open','High','Low','Close']].copy()
+            df = df.dropna(subset=['Open','High','Low','Close'])
         except Exception:
-            L.invalid(f"{ticker},NO_DATA")
+            L.invalid(f"{ticker}")
             continue
 
         if df.empty or len(df) < 60:
-            L.invalid(f"{ticker},EMPTY_OR_SHORT")
+            L.invalid(f"{ticker}")
             continue
         
         # ---- TIMEZONE FIX ----
@@ -70,11 +91,15 @@ def analyze_real_time(tickers):
 
         df = df.between_time("09:15","15:30")
         if len(df) < 20:
-            L.invalid(f"{ticker},INSUFFICIENT_AFTER_FILTER")
+            L.invalid(f"{ticker}")
             continue
 
         i = -1
+
         price = df["Close"].iloc[i]
+
+        max_close = df["Close"].max()
+        min_close = df["Close"].min()
 
         # ---- INDICATORS ----
         df["EMA5"]  = EMA(df,5)
@@ -138,33 +163,55 @@ def analyze_real_time(tickers):
         if ticker not in buy_triggered:
             buy_triggered[ticker] = False
 
-        strong_green = (
-            df["Close"].iloc[i] > df["Open"].iloc[i] and
-            abs(df["Close"].iloc[i] - df["Low"].iloc[i]) < 0.02 * price
-        )
+        strong_green = True #'''(
+        #     df["Close"].iloc[i] > df["Open"].iloc[i] and
+        #     abs(df["Close"].iloc[i] - df["Low"].iloc[i]) < 0.02 * price
+        # )'''
+
+        EMAB=df["EMA9"].iloc[i] > df["EMA21"].iloc[i]
 
         BUY = (
             not buy_triggered[ticker] and
             strong_green and
-            angle >= threshold and
-            df["EMA9"].iloc[i] > df["EMA21"].iloc[i]
+            angle >= threshold and EMAB
         )
+
+        fluctuate, r2 = is_fluctuation(ticker)
+        signal,mean,lastest = add_value(ticker,r2)
+        intra = check_intraday_tradable_yf(ticker)
+
+        if signal and intra:
+            logger.warning(f"Valid:{ticker},{mean},{lastest}")
+            write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f}\n")
+            Regression.insert_one({
+                "Ticker": ticker,
+                "Mean_Diff": mean,
+                "Latest_R2": lastest,
+                "Time": datetime.now()
+            })
+            
+        else:
+            logger.info(f"Invalid{ticker},{mean},{lastest}")
+            write("1Invalid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f}\n")
 
         if BUY:
             signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
 
             intra = check_intraday_tradable_yf(ticker)
-            fluctuate, r2 = is_fluctuation(ticker)
+            #fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{r2:.2f}\n")
-                L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f}")
+                volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                if volume_ratio >= 2:
+                    write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{max_close:.2f},{r2:.2f},{volume_ratio:.2f}\n")
+                L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")
 
-                save_line_chart(df, ticker=ticker, column="Close")
-
+                #save_line_chart(df, ticker=ticker, column="Close")      
                 buy_collection.insert_one({
                     "Ticker": ticker,
                     "Price": price,
+                    "Volume_Ratio": volume_ratio,
+                    "R²": r2,
                     "Time": datetime.now()
                 })
 
@@ -173,7 +220,7 @@ def analyze_real_time(tickers):
                 L.isvalid(f"{ticker},{r2:.2f}")
 
         else:
-            L.invalid(f"{ticker},{price:.2f},{angle:.2f},{threshold:.2f},{last5_ema5}")
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{threshold:.2f}°,{last5_ema5},{strong_green},{EMAB}")
 
         # --------------------------
         #   SELL
@@ -181,33 +228,39 @@ def analyze_real_time(tickers):
         if ticker not in sell_triggered:
             sell_triggered[ticker] = False
 
-        strong_red = (
-            df["Close"].iloc[i] < df["Open"].iloc[i] and
-            abs(df["High"].iloc[i] - df["Close"].iloc[i]) < 0.02 * price
-        )
+        strong_red = True #(
+        #     df["Close"].iloc[i] < df["Open"].iloc[i] and
+        #     abs(df["High"].iloc[i] - df["Close"].iloc[i]) < 0.02 * price
+        # )
+
+        EMAS = df['EMA9'].iloc[i] < df['EMA21'].iloc[i]
+
 
         SELL = (
             not sell_triggered[ticker] and
             strong_red and
-            angle <= -threshold and
-            df['EMA9'].iloc[i] < df['EMA21'].iloc[i]
+            angle <= -threshold and EMAS
         )
 
         if SELL:
             signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
 
             intra = check_intraday_tradable_yf(ticker)
-            fluctuate, r2 = is_fluctuation(ticker)
+            # fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{r2:.2f}\n")
-                L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f}")
+                volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                if volume_ratio >= 2:
+                    write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{min_close:.2f},{r2:.2f},{volume_ratio:.2f}\n")
+                L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")
                 
-                save_line_chart(df, ticker=ticker, column="Close")
+                #save_line_chart(df, ticker=ticker, column="Close")
 
                 sell_collection.insert_one({
                     "Ticker": ticker,
                     "Price": price,
+                    "Volume_Ratio": volume_ratio,
+                    "R²": r2,
                     "Time": datetime.now()
                 })
 
@@ -216,7 +269,15 @@ def analyze_real_time(tickers):
             else:
                 L.isvalid(f"{ticker},{r2:.2f}")
         else:
-            L.invalid(f"{ticker},{price:.2f},{angle:.2f},{-threshold:.2f},{last5_ema5}")
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{-threshold:.2f}°,{last5_ema5},{strong_red},{EMAS}")
+        
+        # BUY1 = signal and not buy_triggered[ticker]
+        # SELL1 = signal and not not sell_triggered[ticker]
+
+        # if BUY1:
+        #     write("2Buy.txt", f"{ticker},{price:.2f},{datetime.now().strftime('%H:%M:%S')},{r2:.2f}\n")
+        # elif SELL1:
+        #     write("2Buy.txt", f"{ticker},{price:.2f},{datetime.now().strftime('%H:%M:%S')},{r2:.2f}\n")
 
 
 def wait_until_next_15_min():

@@ -6,6 +6,8 @@ import logging
 from sklearn.linear_model import LinearRegression
 from datetime import datetime
 
+Fluctuate = {}
+
 def is_fluctuation(ticker):
     try:
         data = yf.download(
@@ -27,15 +29,20 @@ def is_fluctuation(ticker):
         return False , 0
 
     # Convert to IST and filter market hours
-    df.index = df.index.tz_convert('Asia/Kolkata')
+    try:
+        df.index = df.index.tz_convert('Asia/Kolkata')
+    except:
+        df.index = df.index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+
     df = df.between_time("09:15", "15:30")
 
-    if df.empty or len(df) < 20:
+    if df.empty or len(df) < 30:
         logging.warning(f"[{ticker}] Not enough data ({len(df)} rows)")
-        return False,0
+        return False,0.0
 
     # Take last 60 candles
     end_index = len(df)
+    #start = max(0,end_index-60)
     df_slice = df.iloc[0:end_index]
 
     # --- Volatility Calculation ---
@@ -44,7 +51,8 @@ def is_fluctuation(ticker):
 
     # --- Linear regression ---
     y = df_slice['Close'].values.reshape(-1, 1)
-    x = np.arange(len(y)).reshape(-1, 1)
+    z = len(y)
+    x = np.arange(z).reshape(-1, 1)
     model = LinearRegression().fit(x, y)
 
     r2 = model.score(x, y)
@@ -64,12 +72,11 @@ def is_fluctuation(ticker):
     if now < "10:00":
         vol_threshold = 0.006
     else:
-        vol_threshold = 0.0015
+        vol_threshold = 0.004
 
     # --- Final logic ---
-    if volatility < vol_threshold and r2 >= 0.88 and 5 > range_percent > 0.25:
-
-        line = (f"{ticker}✅,{volatility:.4f},{r2:.2f},{range_percent:.2f}")
+    if (volatility < vol_threshold and r2 >= 0.80 ) :#or (r2 >= 0.92):
+        line = (f"{datetime.now().strftime('%H:%M:%S')},{ticker},{volatility:.4f},{angle:.2f},{range_percent:.2f},[{z}],{r2:.2f}")
 
         with open("Fluctuation.txt", "a", encoding="utf-8") as f:
             f.write(line + "\n")
@@ -77,7 +84,7 @@ def is_fluctuation(ticker):
         return True , r2
 
     else:
-        line = (f"{ticker} ❌,{volatility:.4f},{r2:.2f},{range_percent:.2f}")
+        line = (f"{datetime.now().strftime('%H:%M:%S')},{ticker},{volatility:.4f},{angle:.2f},{range_percent:.2f},[{z}],{r2:.2f}")
 
         with open("Fluctuation.txt", "a", encoding="utf-8") as f:
             f.write(line + "\n")
@@ -85,6 +92,6 @@ def is_fluctuation(ticker):
         return False , r2
 
 
-# tickers = ['CHAMBLFERT.NS', 'ABFRL.NS', 'IRISDOREME.NS', 'CAMLINFINE.NS', 'AMBUJACEM.NS', 'ASIANTILES.NS', 'ANANTRAJ.NS', 'DEEPINDS.NS', 'GPIL.NS', 'CCL.NS', 'GIPCL.NS', 'DALBHARAT.NS', 'HERITGFOOD.NS', 'IMFA.NS', 'INDUSINDBK.NS', 'SBC.NS', 'JSWSTEEL.NS', 'INDRAMEDCO.NS', 'GODREJPROP.NS', 'NYKAA.NS', 'JUBLINGREA.NS', 'PATELRMART.NS', 'MINDACORP.NS', 'KOTAKBANK.NS', 'M&MFIN.NS', 'MOTILALOFS.NS', 'NAM-INDIA.NS', 'RAYMOND.NS', 'OBEROIRLTY.NS', 'TDPOWERSYS.NS', 'TIPSMUSIC.NS', 'TORNTPOWER.NS', 'PRESTIGE.NS', 'SWSOLAR.NS', 'SUPREMEIND.NS', 'THELEELA.NS', 'TVSMOTOR.NS', 'V2RETAIL.NS', 'AEGISVOPAK.NS', 'APOLLO.NS', 'ABSLAMC.NS', 'ASHOKLEY.NS', 'CUB.NS', 'CREDITACC.NS', 'DMART.NS', 'ECLERX.NS', 'EXICOM.NS', 'IEX.NS', 'JSWINFRA.NS', 'ORIENTHOT.NS', 'PARKHOTELS.NS', 'SWIGGY.NS', 'WELENT.NS', 'TITAN.NS', 'AEGISLOG.NS', 'BHEL.NS', 'FUSION.NS', 'EFCIL.NS', 'NRBBEARING.NS', 'SHREEJISPG.NS', 'MANYAVAR.NS', 'COROMANDEL.NS', 'ROLEXRINGS.NS', 'INDOTHAI.NS', 'SADHNANIQ.NS', 'GESHIP.NS', 'SANDUMA.NS', 'M&M.NS', 'VINCOFE.NS', 'GMRAIRPORT.NS', 'CELLO.NS', 'HINDZINC.NS', 'LOKESHMACH.NS', 'ETERNAL.NS', 'NATIONALUM.NS', 'SARDAEN.NS', 'SMCGLOBAL.NS', 'GRAVITA.NS', 'VEDL.NS', 'EPL.NS']
+# tickers = ['GABRIEL.NS']#['CHAMBLFERT.NS', 'ABFRL.NS', 'IRISDOREME.NS', 'CAMLINFINE.NS', 'AMBUJACEM.NS', 'ASIANTILES.NS', 'ANANTRAJ.NS', 'DEEPINDS.NS', 'GPIL.NS', 'CCL.NS', 'GIPCL.NS', 'DALBHARAT.NS', 'HERITGFOOD.NS', 'IMFA.NS', 'INDUSINDBK.NS', 'SBC.NS', 'JSWSTEEL.NS', 'INDRAMEDCO.NS', 'GODREJPROP.NS', 'NYKAA.NS', 'JUBLINGREA.NS', 'PATELRMART.NS', 'MINDACORP.NS', 'KOTAKBANK.NS', 'M&MFIN.NS', 'MOTILALOFS.NS', 'NAM-INDIA.NS', 'RAYMOND.NS', 'OBEROIRLTY.NS', 'TDPOWERSYS.NS', 'TIPSMUSIC.NS', 'TORNTPOWER.NS', 'PRESTIGE.NS', 'SWSOLAR.NS', 'SUPREMEIND.NS', 'THELEELA.NS', 'TVSMOTOR.NS', 'V2RETAIL.NS', 'AEGISVOPAK.NS', 'APOLLO.NS', 'ABSLAMC.NS', 'ASHOKLEY.NS', 'CUB.NS', 'CREDITACC.NS', 'DMART.NS', 'ECLERX.NS', 'EXICOM.NS', 'IEX.NS', 'JSWINFRA.NS', 'ORIENTHOT.NS', 'PARKHOTELS.NS', 'SWIGGY.NS', 'WELENT.NS', 'TITAN.NS', 'AEGISLOG.NS', 'BHEL.NS', 'FUSION.NS', 'EFCIL.NS', 'NRBBEARING.NS', 'SHREEJISPG.NS', 'MANYAVAR.NS', 'COROMANDEL.NS', 'ROLEXRINGS.NS', 'INDOTHAI.NS', 'SADHNANIQ.NS', 'GESHIP.NS', 'SANDUMA.NS', 'M&M.NS', 'VINCOFE.NS', 'GMRAIRPORT.NS', 'CELLO.NS', 'HINDZINC.NS', 'LOKESHMACH.NS', 'ETERNAL.NS', 'NATIONALUM.NS', 'SARDAEN.NS', 'SMCGLOBAL.NS', 'GRAVITA.NS', 'VEDL.NS', 'EPL.NS']
 # for ticker in tickers:
-#     is_fluctuation(ticker)
+#     print(is_fluctuation(ticker))

@@ -49,13 +49,13 @@ def check_intraday_tradable_yf(symbol: str) -> bool:
         # is_active2 = candle_count > 100
 
         # --- Write output with UTF-8 encoding ---
-        with open("Intraday.txt", "a", encoding="utf-8") as f:
-            if is_liquid1 and is_stable1 :
-                line = f"'{symbol}' : False,\n"
-            else:
-                line = f"'{symbol}' : True,\n"
-            f.write(line)
-            #print(line.strip())
+        # with open("Intraday.txt", "a", encoding="utf-8") as f:
+        #     if is_liquid1 and is_stable1 :
+        #         line = f"'{symbol}' : False,\n"
+        #     else:
+        #         line = f"'{symbol}' : True,\n"
+        #     f.write(line)
+        #     #print(line.strip())
         
         if is_liquid1 and is_stable1 :
             return True
