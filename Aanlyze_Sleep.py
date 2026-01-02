@@ -1,4 +1,4 @@
-import yfinance as yf 
+import yfinance as yf,pandas as pd
 import pandas as pd 
 import numpy as np
 import logging
@@ -26,24 +26,41 @@ buy_triggered = {}
 sell_triggered = {}
 #M.start_whatsapp_worker()
 h = defaultdict(list)
+last_reset_date = None
 
 def add_value(key, value):
+    global last_reset_date
+
+    now = datetime.now()
+    reset_time = dtime(11, 30)
+
+    # ---- RESET LOGIC (runs once per day after 11:30) ----
+    if now.time() >= reset_time:
+        if last_reset_date != now.date():
+            h.clear()                      # delete ALL stored values
+            last_reset_date = now.date()   # mark reset done
+
+    # ---- NORMAL PROCESSING ----
     h[key].append(value)
 
     if len(h[key]) < 3:
-        return False,0.0,0.0
+        return False, 0.0, 0.0
 
     last3 = h[key][-3:]
+
     diffs = [
         last3[1] - last3[0],
         last3[2] - last3[1]
     ]
 
+    near = last3[1] > last3[0] and last3[2] > last3[1]
     mean_diff = round(sum(diffs) / len(diffs), 2)
     latest = last3[-1]
-    if mean_diff >= 0.15 and latest >= 0.70:
-        return True,mean_diff, latest
-    return False,mean_diff, latest
+
+    if (mean_diff >= 0.13 and latest >= 0.70) or (near and latest >= 0.85):
+        return True, mean_diff, latest
+
+    return False, mean_diff, latest
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
@@ -180,13 +197,27 @@ def analyze_real_time(tickers):
         signal,mean,lastest = add_value(ticker,r2)
         intra = check_intraday_tradable_yf(ticker)
 
-        if signal and intra:
+        if r2 >= 0.93 and r2 != 0.00 and r2 != 1.00:
+            volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
-            write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f}\n")
+            if volume_ratio >= 2:
+                write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+            else:
+                write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+
+        if signal and intra :
+            volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+            logger.warning(f"Valid:{ticker},{mean},{lastest}")
+            if volume_ratio >= 2:
+                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+            else:
+                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+                
             Regression.insert_one({
                 "Ticker": ticker,
                 "Mean_Diff": mean,
                 "Latest_R2": lastest,
+                "Volume_Ratio": volume_ratio,
                 "Time": datetime.now()
             })
             

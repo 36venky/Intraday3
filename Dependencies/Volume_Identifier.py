@@ -76,12 +76,17 @@ def intraday_avg_volume_ratio(
     return volume_ratio, today_avg_volume, past_avg_volume
 
 
-# # Example usage:
-# ratio, today_avg, past_avg = intraday_avg_volume_ratio(
-#     "BBOX.NS",
-#     lookback_days=5
-# )
+# Example usage:
 
-# print(f"Today avg volume : {today_avg:,.0f}")
-# print(f"Past avg volume  : {past_avg:,.0f}")
-# print(f"Volume ratio     : {ratio:.2f}")
+# tickers = ['BAJEL.NS', 'CGCL.NS', 'BLSE.NS', 'DREAMFOLKS.NS', 'CAPTRUST.NS', 'BAJFINANCE.NS', 'AVL.NS', 'DELTACORP.NS', 'CHALET.NS', 'HATHWAY.NS', 'EBGNG.NS', 'GLOTTIS.NS', 'GOKULAGRO.NS', 'EMCURE.NS', 'ITCHOTELS.NS', 'GALLANTT.NS', 'JISLJALEQS.NS', 'KITEX.NS', 'MICEL.NS', 'HPL.NS', 'NITCO.NS', 'NATCOPHARM.NS', 'MIDWESTLTD.NS', 'OLECTRA.NS', 'RUSHIL.NS', 'SJVN.NS', 'TTML.NS', 'OIL.NS', 'SAATVIKGL.NS', 'WAAREEENER.NS', 'SOUTHBANK.NS', 'VINCOFE.NS', 'ACMESOLAR.NS', 'BIOCON.NS', 'CARBORUNIV.NS', 'BSOFT.NS', 'EMSLIMITED.NS', 'KELLTONTEC.NS', 'KOPRAN.NS', 'REMSONSIND.NS', 'TEXRAIL.NS', 'KIRIINDUS.NS', 'NAUKRI.NS', 'YATRA.NS', 'MAHLIFE.NS', 'MASFIN.NS', 'MIDHANI.NS', 'UNITDSPR.NS', 'PFC.NS', 'ENGINERSIN.NS', 'BRIGADE.NS', 'GPPL.NS', 'DCXINDIA.NS', 'GICRE.NS', 'VMSTMT.NS', 'VCL.NS']
+# for ticker in tickers:
+#     try:
+#         ratio, today_avg, past_avg = intraday_avg_volume_ratio(
+#             ticker,
+#             lookback_days=5
+#         )
+#         if ratio > 1.5:
+#             print(f"{ticker}: Today avg volume: {today_avg:,.0f}, Past avg volume: {past_avg:,.0f}, Volume ratio: {ratio:.2f}")
+#     except Exception as e:
+#         print(f"{ticker}: Error - {e}")
+

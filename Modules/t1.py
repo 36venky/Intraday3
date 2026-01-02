@@ -1,4 +1,5 @@
 import pandas as pd
 
-df = pd.read_csv(r"1Invalid.txt", header=None)
-print(df[df.iloc[:,2]>0.9].loc[:,0])
+df = pd.read_csv(r"1Valid.txt", header=None)
+#print(df[df.iloc[:,-1]>=2])
+print(df.iloc[:,-2].mean())
