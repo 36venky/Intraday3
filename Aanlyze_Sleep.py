@@ -26,21 +26,9 @@ buy_triggered = {}
 sell_triggered = {}
 #M.start_whatsapp_worker()
 h = defaultdict(list)
-last_reset_date = None
+call_count = defaultdict(int)
 
 def add_value(key, value):
-    global last_reset_date
-
-    now = datetime.now()
-    reset_time = dtime(11, 30)
-
-    # ---- RESET LOGIC (runs once per day after 11:30) ----
-    if now.time() >= reset_time:
-        if last_reset_date != now.date():
-            h.clear()                      # delete ALL stored values
-            last_reset_date = now.date()   # mark reset done
-
-    # ---- NORMAL PROCESSING ----
     h[key].append(value)
 
     if len(h[key]) < 3:
@@ -67,7 +55,7 @@ def analyze_real_time(tickers):
     start_time = dtime(10, 13)
     end_time   = dtime(14, 35)
 
-    T = 0 #
+    T = 1 #
 
     if T == 0:
         if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
@@ -198,20 +186,23 @@ def analyze_real_time(tickers):
         intra = check_intraday_tradable_yf(ticker)
 
         if r2 >= 0.93 and r2 != 0.00 and r2 != 1.00:
-            volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+            volume_ratio, today_avg_volume, past_avg_volume,volume3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
             if volume_ratio >= 2:
-                write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+                write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
             else:
-                write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+                write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
 
         if signal and intra :
-            volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+            call_count[ticker] += 1
+            volume_ratio, today_avg_volume, past_avg_volume,volume3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
             if volume_ratio >= 2:
-                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
             else:
-                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f}\n")
+                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
+            if call_count[ticker] > 2:
+                write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
                 
             Regression.insert_one({
                 "Ticker": ticker,
@@ -232,7 +223,7 @@ def analyze_real_time(tickers):
             #fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
                 if volume_ratio >= 2:
                     write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{max_close:.2f},{r2:.2f},{volume_ratio:.2f}\n")
                 L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")
@@ -280,7 +271,7 @@ def analyze_real_time(tickers):
             # fluctuate, r2 = is_fluctuation(ticker)
 
             if intra and fluctuate:
-                volume_ratio, today_avg_volume, past_avg_volume = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
                 if volume_ratio >= 2:
                     write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{last5_ema5},{ema_diff:.2f},{min_close:.2f},{r2:.2f},{volume_ratio:.2f}\n")
                 L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")

@@ -1,5 +1,7 @@
+import numpy as np
 import pandas as pd
 
-df = pd.read_csv(r"1Valid.txt", header=None)
-#print(df[df.iloc[:,-1]>=2])
-print(df.iloc[:,-2].mean())
+x = np.array([112451, 114525, 105424])
+y = pd.Series(x)
+
+print(y.rank())
