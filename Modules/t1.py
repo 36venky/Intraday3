@@ -1,7 +1,9 @@
-import numpy as np
 import pandas as pd
 
-x = np.array([112451, 114525, 105424])
-y = pd.Series(x)
+# Read file (no header)
+df = pd.read_csv("1Count.txt", header=None)
 
-print(y.rank())
+# Filter rows where last column > 5
+filtered = df[df.iloc[:, -1] > 5]
+
+print(filtered)

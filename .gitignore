@@ -7,8 +7,6 @@
 # Ignore all Python cache files
 __pycache__/
 *.pyc
-*.log
-*.txt
 
 # Ignore this specific file
 Intraday/structure.txt

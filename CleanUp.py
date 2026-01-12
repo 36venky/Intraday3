@@ -31,6 +31,7 @@ def cleanup_project(folder_path):
 # Usage
 cleanup_project(r"C:\Users\91702\OneDrive\Desktop\Intraday")
 cleanup_project(r"C:\Users\91702\OneDrive\Desktop\Intraday\Modules")
+cleanup_project(r"C:\Users\91702\OneDrive\Desktop\Intraday\Modules\logs")
 cleanup_project(r"C:\Users\91702\OneDrive\Desktop\Intraday\Dependencies")
 cleanup_project(r"C:\Users\91702\OneDrive\Desktop\Intraday\Indicators")
 
