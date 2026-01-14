@@ -30,30 +30,35 @@ call_count = defaultdict(int)
 
 def add_value(key, value):
     h[key].append(value)
+    R2 = h[key].copy()
+    if len(h[key]) < 3:
+        return False, False, 0.0, value,R2
 
-    if len(h[key]) < 4:
-        return False,False, 0.0, 0.0
-
-    last3 = h[key][-4:]
+    last3 = h[key][-3:]
 
     diffs = [
         last3[1] - last3[0],
         last3[2] - last3[1]
     ]
-    near = False
-    near = last3[1] >= last3[0] and last3[2] >= last3[1] and last3[2] >= last3[3]
+
     mean_diff = round(sum(diffs) / len(diffs), 2)
     latest = last3[-1]
 
-    if (mean_diff >= 0.11 and latest >= 0.70):
-        return True, near,mean_diff, latest
+    # trend checks
+    n1 = last3[1] >= last3[0] and last3[2] >= last3[1]
+    n2 = last3[2] >= 0.65
+    near = n1 and n2
 
-    return False,near, mean_diff, latest
+    if mean_diff >= 0.11 and latest >= 0.70:
+        return True, near, mean_diff, latest, R2
+    else:
+        return False, near, mean_diff, latest, R2
+
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
     start_time = dtime(9,57)
-    end_time   = dtime(14, 35)
+    end_time   = dtime(15, 35)
 
     T = 0
 
@@ -158,7 +163,7 @@ def analyze_real_time(tickers):
             L.invalid(f"{ticker},EMA_NAN")
             continue
         
-        last5_ema5 = df["EMA5"].tail(5).round(2).tolist()
+        #last5_ema5 = df["EMA5"].tail(5).round(2).tolist()
         ema_diff = df["EMA5"].iloc[i] - df["EMA5"].iloc[i-1]
         angle = math.degrees(math.atan(ema_diff))
 
@@ -182,7 +187,7 @@ def analyze_real_time(tickers):
         )
 
         fluctuate, r2 = is_fluctuation(ticker)
-        signal,near,mean,lastest = add_value(ticker,r2)
+        signal,near,mean,lastest,vals = add_value(ticker,r2)
         intra = check_intraday_tradable_yf(ticker)
 
         if r2 >= 0.93 and r2 != 0.00 and r2 != 1.00:
@@ -199,13 +204,13 @@ def analyze_real_time(tickers):
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
             
             if volume_ratio >= 2:
-                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]}\n")
+                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
             if near:
-                write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]}\n")
+                write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
             if call_count[ticker] > 1:
-                write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]}\n")
+                write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
             else:
-                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]}\n")
+                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
 
             Regression.insert_one({
                 "Ticker": ticker,
@@ -217,7 +222,7 @@ def analyze_real_time(tickers):
             
         else:
             logger.info(f"Invalid{ticker},{mean},{lastest}")
-            write("1Invalid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f}\n")
+            write("1Invalid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{vals}\n")
 
         if BUY:
             signal_time = df.index[i].strftime('%Y-%m-%d %H:%M')
@@ -248,7 +253,7 @@ def analyze_real_time(tickers):
                 L.isvalid(f"{ticker},{r2:.2f}")
 
         else:
-            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{threshold:.2f}°,{last5_ema5},{strong_green},{EMAB}")
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{threshold:.2f}°{strong_green},{EMAB}")
 
         # --------------------------
         #   SELL
@@ -300,7 +305,7 @@ def analyze_real_time(tickers):
             else:
                 L.isvalid(f"{ticker},{r2:.2f}")
         else:
-            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{-threshold:.2f}°,{last5_ema5},{strong_red},{EMAS}")
+            L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{-threshold:.2f}°,{strong_red},{EMAS}")
         
         # BUY1 = signal and not buy_triggered[ticker]
         # SELL1 = signal and not not sell_triggered[ticker]
