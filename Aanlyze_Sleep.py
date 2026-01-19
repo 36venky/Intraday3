@@ -205,7 +205,7 @@ def analyze_real_time(tickers):
             
             if volume_ratio >= 2:
                 write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
-            if near:
+            if near and volume_ratio >= 2:
                 write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
             if call_count[ticker] > 1:
                 write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")

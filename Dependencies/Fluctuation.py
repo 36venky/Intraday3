@@ -20,13 +20,13 @@ def is_fluctuation(ticker):
         )
     except Exception as e:
         logging.error(f"Download error for {ticker}: {e}")
-        return False , 0
+        return False ,0
 
     try:
         df = data[ticker][['Open', 'High', 'Low', 'Close']].copy()
     except KeyError:
         logging.warning(f"[{ticker}] Data not found.")
-        return False , 0
+        return False ,0
 
     # Convert to IST and filter market hours
     try:
@@ -78,18 +78,10 @@ def is_fluctuation(ticker):
     # --- Final logic ---
     if (volatility < vol_threshold and r2 >= 0.80 ) :#or (r2 >= 0.92):
         line = (f"{datetime.now().strftime('%H:%M:%S')},{ticker},{volatility:.4f},{angle:.2f},{range_percent:.2f},[{z}],{r2:.2f}")
-
-        with open("Fluctuation.txt", "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-
         return True , r2
 
     else:
         line = (f"{datetime.now().strftime('%H:%M:%S')},{ticker},{volatility:.4f},{angle:.2f},{range_percent:.2f},[{z}],{r2:.2f}")
-
-        with open("Fluctuation.txt", "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-
         return False , r2
 
 
