@@ -10,3 +10,7 @@ def cleanup_project(folder_path):
                 print(f"Deleted file: {file}")
             except Exception as e:
                 print(f"Failed to delete file {file}: {e}")
+
+
+cleanup_project("C:\\Users\\91702\\OneDrive\\Desktop\\Intraday")
+cleanup_project("C:\\Users\\91702\\OneDrive\\Desktop\\Intraday\\Modules\\logs")
