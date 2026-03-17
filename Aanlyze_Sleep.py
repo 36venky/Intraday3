@@ -60,7 +60,7 @@ def analyze_real_time(tickers):
     start_time = dtime(9,57)
     end_time   = dtime(15, 35)
 
-    T = 0
+    T = 1
 
     if T == 0:
         if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
@@ -194,11 +194,11 @@ def analyze_real_time(tickers):
             volume_ratio, today_avg_volume, past_avg_volume,volume3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
             if volume_ratio >= 2:
-                smooth(ticker,r2)
-                write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
+                dis = smooth(ticker,r2)
+                write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{dis}\n")
             else:
-                smooth(ticker,r2)
-                write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3}\n")
+                dis = smooth(ticker,r2)
+                write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{dis}\n")
 
         if signal and intra :
             call_count[ticker] += 1
@@ -206,16 +206,17 @@ def analyze_real_time(tickers):
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
             
             if volume_ratio >= 2:
-                smooth(ticker,r2)
-                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
+                dis = smooth(ticker,r2)
+                write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             if near and volume_ratio >= 2:
-                write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
+                dis = smooth(ticker,r2)
+                write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             if call_count[ticker] > 1:
-                smooth(ticker,r2)
-                write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
+                dis = smooth(ticker,r2)
+                write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             else:
-                smooth(ticker,r2)
-                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals}\n")
+                dis = smooth(ticker,r2)
+                write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
 
             Regression.insert_one({
                 "Ticker": ticker,
@@ -237,11 +238,12 @@ def analyze_real_time(tickers):
 
             if intra and fluctuate:
                 volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                dis = smooth(ticker,r2)
                 if volume_ratio >= 2:
-                    write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3}\n")
+                    write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
                 else:
-                    write("2Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3}\n")
-                smooth(ticker,r2)
+                    write("2Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
+                
                 L.buy(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")
 
                 #save_line_chart(df, ticker=ticker, column="Close")      
@@ -288,11 +290,13 @@ def analyze_real_time(tickers):
 
             if intra and fluctuate:
                 volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
+                dis = smooth(ticker,r2)
+                
                 if volume_ratio >= 2:
-                    write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3}\n")
+                    write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
                 else:
-                    write("2Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3}\n")
-                smooth(ticker,r2)
+                    write("2Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
+
                 L.sell(f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{ema_diff:.2f},{angle:.2f},{threshold:.2f},{volume_ratio:.2f}")
                 
                 #save_line_chart(df, ticker=ticker, column="Close")

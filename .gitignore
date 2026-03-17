@@ -3,6 +3,7 @@
 
 # Ignore project-specific intraday folder
 .intraday/
+Intraday/Trail/
 
 # Ignore all Python cache files
 __pycache__/
