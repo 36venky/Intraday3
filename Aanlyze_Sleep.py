@@ -60,7 +60,7 @@ def analyze_real_time(tickers):
     start_time = dtime(9,57)
     end_time   = dtime(15, 35)
 
-    T = 1
+    T = 0
 
     if T == 0:
         if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
