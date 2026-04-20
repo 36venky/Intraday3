@@ -18,4 +18,6 @@ def insert_record(percent, amount):
 
 
 # Example
-insert_record(2.79, 391.37)
+percent = input("Enter percent change: ")
+amount = input("Enter amount: ")
+insert_record(float(percent), float(amount))
