@@ -5,7 +5,7 @@
 
 import numpy as np
 
-def detect_filtered_reversals(prices, min_move=0.01):
+def detect_filtered_reversals(prices, min_move=0.00):
     """
     min_move = minimum percentage move between swings (e.g., 0.01 = 1%)
     """
@@ -51,18 +51,73 @@ def detect_filtered_reversals(prices, min_move=0.01):
 import matplotlib.pyplot as plt
 import yfinance as yf
 
-data = yf.download("ETERNAL.NS", interval="15m", period="10d")
+data = yf.download("ETERNAL.NS", interval="1d", period="1y")
 
 data = data.dropna()
 prices = data['Close'].dropna().to_numpy()
 
 lows, highs = detect_filtered_reversals(prices, min_move=0.005)
 
-plt.plot(prices)
+# plt.plot(prices)
 
-plt.scatter(lows, prices[lows], s=30, color='red')
-plt.scatter(highs, prices[highs], s=30, color='green')
+# plt.scatter(lows, prices[lows], s=30, color='red')
+# plt.scatter(highs, prices[highs], s=30, color='green')
 
-plt.title("All Reversal Points")
+# plt.title("All Reversal Points")
+# plt.show()
+
+plt.figure(figsize=(12, 6))
+
+# Price line
+plt.plot(prices, label="Price")
+
+# Mark points
+plt.scatter(lows, prices[lows], s=30, color='red', label="Lows")
+plt.scatter(highs, prices[highs], s=30, color='green', label="Highs")
+
+n = len(prices)
+
+# 🔥 Function to find termination index
+def find_termination(start_idx, level, is_support=True):
+    for i in range(start_idx + 1, n):
+        if is_support:
+            # price comes back down to support
+            if prices[i] <= level:
+                return i
+        else:
+            # price comes back up to resistance
+            if prices[i] >= level:
+                return i
+    return n - 1  # if never touched
+
+# 🔴 Support lines (lows)
+for idx in lows:
+    level = prices[idx]
+    end_idx = find_termination(idx, level, is_support=True)
+
+    plt.hlines(
+        y=level,
+        xmin=idx,
+        xmax=end_idx,
+        colors='red',
+        linestyles='dashed',
+        alpha=0.6
+    )
+
+# 🟢 Resistance lines (highs)
+for idx in highs:
+    level = prices[idx]
+    end_idx = find_termination(idx, level, is_support=False)
+
+    plt.hlines(
+        y=level,
+        xmin=idx,
+        xmax=end_idx,
+        colors='green',
+        linestyles='dashed',
+        alpha=0.6
+    )
+
+plt.title("Dynamic Support/Resistance (Terminating on Touch)")
+plt.legend()
 plt.show()
-

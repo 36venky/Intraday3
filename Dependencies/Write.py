@@ -26,10 +26,14 @@ Thread(target=writer_worker, daemon=True).start()
 
 
 def write(filename, text):
+    base_dir = os.path.dirname(os.path.abspath(__file__))     # Dependencies/
+    project_root = os.path.dirname(base_dir)                  # project/
+    target_dir = os.path.join(project_root, "Signals")        # project/Signals/
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))   # folder of Dependencies/
-    main_dir = os.path.dirname(base_dir)                    # parent (your project folder)
-    filepath = os.path.join(main_dir, filename)
+    os.makedirs(target_dir, exist_ok=True)
+
+    filepath = os.path.join(target_dir, filename)
+
     try:
         write_queue.put((filepath, text))
     except Exception as e:
