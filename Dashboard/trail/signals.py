@@ -51,6 +51,24 @@ def parse_line(file, parts):
             return None
         
         keys = ["Time","Ticker","Value","Score","SignalType"]
+    
+    elif "Reg" in file:
+        if len(parts) > 9:
+            return None
+        
+        keys = ["Time","Ticker","Value","Score","SignalType","Metric1","Metric2","Metric3","Array"]
+    
+    elif "Valid" in file:
+        if len(parts) > 9:
+            return None
+        
+        keys = ["Time","Ticker","Value","Score","SignalType","Metric1","Metric2","Metric3","Array"]
+    
+    elif "Count" in file:
+        if len(parts) > 9:
+            return None
+        
+        keys = ["Time","Ticker","Value","Score","SignalType","Metric1","Metric2","Metric3","Array"]
 
     else:
         return None
