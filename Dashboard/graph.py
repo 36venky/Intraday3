@@ -34,8 +34,8 @@ def get_valid_periods(interval):
     if interval == "1m":
         return ["1d", "5d"]
     elif interval in ["5m", "15m"]:
-        return ["1d", "5d", "1mo"]
-    return ["1d", "5d", "1mo", "3mo"]
+        return ["1d","2d", "5d","15d", "1mo"]
+    return ["1d", "5d", "1mo", "3mo","6mo", "1y"]
 
 from Features.UI import get_user_inputs,get_indicator_settings
 
