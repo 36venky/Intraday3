@@ -1,14 +1,12 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from Data_Manager import *
 import Aanlyze_Sleep as AS
 import logging
 
 logging.info("🚀 Analyzer [4] started...")
 
-tickers = ['690GS2065', '709GS2074', 'ABFRL', 'AEROENTER', 'ALPA', 'ANIKINDS', 'ARFIN', 'ARIHANTCAP', 'ASIANTILES', 'AUTOIND', 'BANKIETF', 'BEPL', 'BIGBLOC', 'BLUSPRING', 'BMWVENTLTD', 'BODALCHEM', 'BRIGHOTEL', 'BYKE', 'CAPINVIT', 'CPSEETF', 'DBOL', 'DCW', 'DELTACORP', 'DJML', 'DOLATALGO', 'ELECTCAST', 'EMBDL', 'EQUITASBNK', 'FILATEX', 'FMCGIETF', 'FOODSIN', 'GATEWAY', 'GEOJITFSL', 'GILT5YBEES', 'GLOBAL', 'GLOTTIS', 'GROWWDEFNC', 'HILINFRA', 'HITECH', 'IEML', 'IFCI', 'IGCL', 'INDORAMA', 'INFRAIETF', 'IOLCP', 'IRBINVIT', 'JAIBALAJI', 'JAYNECOIND', 'JEYYAM', 'JTLIND', 'LLOYDSENGG', 'LLOYDSENT', 'MANALIPETC', 'MASPTOP50', 'MAYASHEEL', 'MCLEODRUSS', 'MEDICO', 'MMTC', 'MODEFENCE', 'MOL', 'MOM100', 'MOMENTUM50', 'MOREALTY', 'NAVKARCORP', 'NEXT50IETF', 'NFL', 'NIITLTD', 'NITCO', 'NIVABUPA', 'OILCOUNTUB', 'OMAXAUTO', 'OMAXE', 'ONEPOINT', 'ONMOBILE', 'ORICONENT', 'PASUPTAC', 'PGINVIT', 'PNBGILTS', 'PRITI', 'PROZONER', 'PSUBANKADD', 'PSUBNKBEES', 'PSUBNKIETF', 'RAJOOENG', 'RBA', 'REGAAL', 'RMDRIP', 'ROTO', 'RSSOFTWARE', 'SANGHIIND', 'SANSTAR', 'SERVOTECH', 'SHREDIGCEM', 'SHRIRAMPPS', 'SILGO', 'SJVN', 'SMCGLOBAL', 'SPIC', 'SPORTKING', 'TTML', 'UTINEXT50', 'VASCONEQ', 'VERTOZ', 'VMSTMT', 'VPRPL']#EX.Price.list(40, 50)
-tickers = [t + '.NS' for t in tickers]
-
 while True:
-    AS.analyze_real_time(tickers)
+    AS.analyze_real_time(get_ticker(4))
     AS.wait_until_next_15_min()

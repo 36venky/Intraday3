@@ -1,3 +1,8 @@
+'''
+    Executions starts form here,
+    This script will run all the analyzer scripts concurrently, allowing them to operate simultaneously without blocking each other.
+'''
+
 import subprocess
 import glob
 import os

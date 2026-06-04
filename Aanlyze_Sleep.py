@@ -4,16 +4,23 @@ import numpy as np
 import logging
 from datetime import datetime, timedelta, time as dtime
 import os , sys
+from Trail import QuantFiltering
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Dependencies import *
+from Data_Manager.tickers import get_ticker
 from Indicators import *
 from Dependencies.Loggings import logger as L
 from pymongo import MongoClient
 from collections import defaultdict
+from Strategy.St1 import breakout_confirmation
+from Data_Manager.data import *
 from dotenv import load_dotenv
 
 load_dotenv() # Load environment variables from .env file
 
-# --- MongoDB Setup ---
+''' 
+    --- MongoDB Setup ---
+'''
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client["Trail1"]
@@ -57,7 +64,7 @@ def add_value(key, value):
 
 def analyze_real_time(tickers):
     now = datetime.now().time()
-    start_time = dtime(9,57)
+    start_time = dtime(9,27)
     end_time   = dtime(15, 35)
 
     T = 0
@@ -66,10 +73,13 @@ def analyze_real_time(tickers):
         if not (start_time <= now <= end_time and 0 <= datetime.now().weekday() <= 4):
             return  # Market closed
 
+    interval = "15m"
+
     try:
+        Download(tickers)
         data = yf.download(
             tickers=tickers,
-            interval='15m',
+            interval=interval,
             period='6d',
             progress=False,
             auto_adjust=True,
@@ -82,6 +92,7 @@ def analyze_real_time(tickers):
     for ticker in tickers:
 
         # ---- GET DF SAFELY ----
+        breakout_confirmation(ticker)
         try:
             df = data[ticker][['Open','High','Low','Close']].copy()
             df = df.dropna(subset=['Open','High','Low','Close'])
@@ -100,6 +111,9 @@ def analyze_real_time(tickers):
             df.index = df.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
 
         df = df.between_time("09:15","15:30")
+
+        #Store(df, ticker, interval)
+
         if len(df) < 20:
             L.invalid(f"{ticker}")
             continue
@@ -193,29 +207,31 @@ def analyze_real_time(tickers):
         if r2 >= 0.93 and r2 != 0.00 and r2 != 1.00:
             volume_ratio, today_avg_volume, past_avg_volume,volume3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
+
+            breakout_confirmation(ticker)
+            dis = smooth(ticker,r2)
+
             if volume_ratio >= 2:
-                dis = smooth(ticker,r2)
                 write("1Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{dis}\n")
             else:
-                dis = smooth(ticker,r2)
                 write("2Reg.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{dis}\n")
 
         if signal and intra :
             call_count[ticker] += 1
             volume_ratio, today_avg_volume, past_avg_volume,volume3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
             logger.warning(f"Valid:{ticker},{mean},{lastest}")
-            
+            dis = smooth(ticker,r2)
+
+
             if volume_ratio >= 2:
-                dis = smooth(ticker,r2)
                 write("1Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             if near and volume_ratio >= 2:
-                dis = smooth(ticker,r2)
+                breakout_confirmation(ticker)
                 write("1Near.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             if call_count[ticker] > 1:
-                dis = smooth(ticker,r2)
+                breakout_confirmation(ticker)
                 write("1Count.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
             else:
-                dis = smooth(ticker,r2)
                 write("2Valid.txt", f"{datetime.now().strftime('%H:%M:%S')},{ticker},{mean},{lastest:.2f},{volume_ratio:.2f},{volume3},{call_count[ticker]},{vals},{dis}\n")
 
             Regression.insert_one({
@@ -239,6 +255,7 @@ def analyze_real_time(tickers):
             if intra and fluctuate:
                 volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
                 dis = smooth(ticker,r2)
+                breakout_confirmation(ticker)
                 if volume_ratio >= 2:
                     write("1Buy.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
                 else:
@@ -291,7 +308,8 @@ def analyze_real_time(tickers):
             if intra and fluctuate:
                 volume_ratio, today_avg_volume, past_avg_volume,v3 = intraday_avg_volume_ratio(ticker, lookback_days=5)
                 dis = smooth(ticker,r2)
-                
+                breakout_confirmation(ticker)
+
                 if volume_ratio >= 2:
                     write("1Sell.txt", f"{ticker},{price:.2f},{signal_time},{datetime.now().strftime('%H:%M:%S')},{r2:.2f},{volume_ratio:.2f},{v3},{dis}\n")
                 else:
@@ -316,6 +334,9 @@ def analyze_real_time(tickers):
         else:
             L.invalid(f"{ticker},{price:.2f},{angle:.2f}°,{-threshold:.2f}°,{strong_red},{EMAS}")
         
+
+        #update_stock("SCI.NS",0.90,0.0124)
+        #QuantFiltering("1Smooth.txt")
         # BUY1 = signal and not buy_triggered[ticker]
         # SELL1 = signal and not not sell_triggered[ticker]
 
@@ -332,3 +353,10 @@ def wait_until_next_15_min():
     wait_seconds = (next_time - now).total_seconds()
     logging.info(f"Waiting {int(wait_seconds)}s until next 15-min {next_time.strftime('%H:%M:%S')}")
     tm.sleep(wait_seconds)        
+
+
+def main():
+    analyze_real_time(get_ticker(1))
+    #print(get_ticker(1))
+if __name__ == "__main__":
+    main()

@@ -2,13 +2,12 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import Aanlyze_Sleep as AS
+from Data_Manager import *
 import logging
 
 logging.info("🚀 Analyzer [11] started...")
 
-tickers = ['AAVAS', 'ACUTAAS', 'ADANIENT', 'ADANIPORTS', 'AFFLE', 'AIIL', 'AIRTELPP', 'AKZOINDIA', 'ANGELONE', 'APLAPOLLO', 'ASIANPAINT', 'BAJAJFINSV', 'BALKRISIND', 'BDL', 'BEML', 'BHARTIHEXA', 'BLUESTARCO', 'BSE', 'CAMS', 'CARTRADE', 'CDSL', 'CHOLAFIN', 'CHOLAHLDNG', 'CIPLA', 'COCHINSHIP', 'COFORGE', 'COLPAL', 'COROMANDEL', 'CPPLUS', 'CRISIL', 'CUMMINSIND', 'DALBHARAT', 'DATAPATTNS', 'DEEPAKNTR', 'DMART', 'ECLERX', 'ENRIN', 'GLAND', 'GLENMARK', 'GODFRYPHLP', 'GODREJPROP', 'GRASIM', 'GRAVITA', 'GRSE', 'GVT&D', 'HAL', 'HCLTECH', 'HDFCAMC', 'HINDUNILVR', 'HYUNDAI', 'ICICIGI', 'IKS', 'INDIAMART', 'KEI', 'KOTAKBANK', 'LALPATHLAB', 'LGEINDIA', 'LT', 'LTTS', 'LUMAXTECH', 'LUPIN', 'M&M', 'MANKIND', 'MAPMYINDIA', 'MASTEK', 'MAZDOCK', 'MFSL', 'MPHASIS', 'MTARTECH', 'MUTHOOTFIN', 'NETWEB', 'NH', 'OBEROIRLTY', 'ONESOURCE', 'ORIANA', 'PHOENIXLTD', 'PIIND', 'PIRAMALFIN', 'POLICYBZR', 'POLYMED', 'PRESTIGE', 'RADICO', 'SBILIFE','SBIN', 'SHAILY', 'SIEMENS', 'SRF', 'SUNPHARMA', 'SUPREMEIND', 'TATACOMM', 'TCS', 'TEAMLEASE', 'TECHM', 'TIINDIA', 'TITAN', 'TORNTPHARM', 'TRENT', 'TVSMOTOR', 'V2RETAIL', 'WAAREEENER']#EX.Price.list(175 , 200)
-tickers = [t + '.NS' for t in tickers]
 
 while True:
-    AS.analyze_real_time(tickers)
+    AS.analyze_real_time(get_ticker(11))
     AS.wait_until_next_15_min()

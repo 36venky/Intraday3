@@ -1,16 +1,19 @@
+'''
+    Each file in this folder runs as an independent thread/process that calls
+    `analyze_real_time()` every 15 minutes for a specific set of tickers.
+    This enables parallel analysis of multiple tickers simultaneously,
+    improving scalability and preventing the main thread from blocking.
+'''
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import Aanlyze_Sleep as AS
 import logging
+from Data_Manager import *
 
 logging.info("🚀 Analyzer [1] started...")
 
-tickers = ['INOXGREEN ','UTIAMC','TRIVENI','BAJAJHFL','TIMKEN','TIMKEN','GUJTHEM','VIPIND','NUVAMA','THERMAX','APOLLOHOSP','ROUTE','DSSL','NEOGEN','ADANIPOWER', 'APOLLO', 'ASHOKLEY', 'AXISBANK', 'BAJFINANCE', 'BANDHANBNK', 'BANKBARODA', 'BANKINDIA', 'BCG', 'BEL', 'BELRISE', 'BHARTIARTL', 'BHEL', 'BPCL', 'BSOFT', 'CANBK', 'CENTRALBK', 'DAVANGERE', 'DHARAN', 'EMMVEE', 'ETERNAL', 'EXCELSOFT', 'FEDERALBNK', 'FILATFASH', 'GAIL', 'GATECH', 'GMRAIRPORT', 'GOLDBEES', 'GOLDCASE', 'GROWW', 'GSPL', 'GTLINFRA', 'HDFCBANK', 'HDFCSILVER', 'HFCL', 'HINDPETRO', 'ICICIBANK', 'IDBI', 'IDFCFIRSTB', 'IEX', 'INDUSTOWER', 'INFIBEAM', 'INFY', 'IOB', 'IOC', 'IREDA', 'ITBEES', 'ITC', 'JAMNAAUTO', 'JIOFIN', 'JMFINANCIL', 'KTKBANK', 'LIQUIDCASE', 'MCLOUD', 'METALIETF', 'MMFL', 'MOTHERSON', 'NATCOPHARM', 'NATIONALUM', 'NBCC', 'NECLIFE', 'NHPC', 'NIFTYBEES', 'NMDC', 'NTPC', 'NTPCGREEN', 'OLAELEC', 'ONGC', 'PAISALO', 'PATELENG', 'PCJEWELLER', 'PFOCUS', 'PNB', 'POWERGRID', 'PROSTARM', 'PWL', 'RECLTD', 'BRITANNIA', 'RELIANCE', 'RHETAN', 'RICOAUTO', 'RPOWER', 'RTNPOWER', 'SAGILITY', 'SAIL', 'SALASAR', 'SAMMAANCAP', 'SBC', 'SBIN', 'SCI', 'SEPC', 'SETFGOLD', 'SHRIRAMFIN', 'SIGACHI', 'SILVERBEES', 'SILVERCASE', 'SILVERIETF', 'SINDHUTRAD', 'SOUTHBANK', 'SPARC', 'SUZLON', 'SWIGGY', 'TATAGOLD', 'TATASTEEL', 'TATSILV', 'TFCILTD', 'TMCV', 'TMPV', 'UCOBANK', 'UJJIVANSFB', 'UNIONBANK', 'UTKARSHBNK', 'VCL', 'VEDL', 'VIKRAN', 'VINCOFE', 'VMM', 'WEBELSOLAR', 'WIPRO', 'WOCKPHARMA', 'ZEEL']#EX.Price.list(10, 20)
-tickers = [t + '.NS' for t in tickers]
-
 while True:
-    #for ticker in tickers:
-    AS.analyze_real_time(tickers)
-    #V.is_volume_breakout()
+    AS.analyze_real_time(get_ticker(1))
     AS.wait_until_next_15_min()

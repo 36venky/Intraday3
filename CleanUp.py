@@ -3,7 +3,7 @@ import glob
 
 def cleanup_project(folder_path):
     # Delete txt and log files (top-level only)
-    for pattern in ("*.txt", "*.log"):
+    for pattern in ("*.txt", "*.log","*.csv","*.json"):
         for file in glob.glob(os.path.join(folder_path, pattern)):
             try:
                 os.remove(file)
